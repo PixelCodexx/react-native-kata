@@ -1,0 +1,36 @@
+appId: ${APP_ID}
+name: Book an appointment end to end
+---
+- runFlow: subflows/launch-app.yaml
+- runFlow: subflows/open-services.yaml
+- assertVisible: "Select a Service"
+- runFlow: subflows/open-booking-form.yaml
+
+# Fill the form like a user: the keyboard's next key moves to the following
+# field, and return on the last field submits.
+- tapOn:
+    id: "booking-name"
+- inputText: "Maestro Tester"
+- pressKey: Enter
+- inputText: "maestro@example.com"
+- pressKey: Enter
+- inputText: "2018"
+- pressKey: Enter
+- inputText: "Toyota"
+- pressKey: Enter
+- inputText: "Corolla"
+- pressKey: Enter
+
+# Only the API's response is shown, and only after it succeeds.
+- extendedWaitUntil:
+    visible: "You're booked!"
+    timeout: 20000
+# Each detail row is one accessibility element ("Name, Maestro Tester"), so
+# iOS exposes the combined label; match the value within it.
+- assertVisible: ".*Maestro Tester.*"
+- assertVisible: ".*maestro@example.com.*"
+- assertVisible: ".*2018 Toyota Corolla.*"
+
+# Back to a refreshed list; the form is gone from history.
+- tapOn: "Book another service"
+- assertVisible: "Select a Service"

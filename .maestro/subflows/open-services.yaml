@@ -1,0 +1,16 @@
+# From the landing page to a loaded services list.
+appId: ${APP_ID}
+---
+- tapOn: "Get Started"
+- extendedWaitUntil:
+    visible: ".* appointments? available"
+    timeout: 20000
+# The API fails ~20% of slot requests on purpose. The app retries twice on its
+# own; if a service still failed, use its Try again like a user would.
+- repeat:
+    while:
+      visible: "We couldn't check availability."
+    times: 3
+    commands:
+      - tapOn: "Try again"
+      - waitForAnimationToEnd

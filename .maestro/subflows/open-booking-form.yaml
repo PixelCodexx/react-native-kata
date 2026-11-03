@@ -1,0 +1,19 @@
+# Expands the first available service, picks its first slot and opens the form.
+appId: ${APP_ID}
+---
+- tapOn:
+    text: ".* appointments? available"
+    index: 0
+- extendedWaitUntil:
+    visible: "Available Appointments"
+    timeout: 5000
+- assertVisible:
+    text: "Book Now"
+    enabled: false
+- tapOn:
+    text: "(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), .*"
+    index: 0
+- tapOn: "Book Now"
+- extendedWaitUntil:
+    visible: "Your Details"
+    timeout: 20000

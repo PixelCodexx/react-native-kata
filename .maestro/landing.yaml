@@ -1,0 +1,10 @@
+appId: ${APP_ID}
+name: Landing page
+---
+- runFlow: subflows/launch-app.yaml
+- assertVisible: "Welcome to Lithia & Driveway Service!"
+- assertVisible: "Illustration of a car surrounded by service tools"
+- assertVisible: "Lithia & Driveway wants to put you in full control.*"
+- assertVisible: "Get Started"
+- assertVisible: "supportbutton@driveway.com"
+- assertVisible: "555-872-3289"
