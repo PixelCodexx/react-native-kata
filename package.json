@@ -12,12 +12,15 @@
     "test": "jest",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "typecheck:server": "tsc --project tsconfig-server.json --noEmit"
+    "typecheck:server": "tsc --project tsconfig-server.json --noEmit",
+    "e2e": "maestro test -e APP_ID=host.exp.Exponent -e EXPO_URL=exp://127.0.0.1:8081 .maestro",
+    "e2e:android": "maestro test -e APP_ID=host.exp.exponent -e EXPO_URL=exp://10.0.2.2:8081 .maestro"
   },
   "engines": {
     "node": ">=22.13.0 <23"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.105.3",
     "cors": "^2.8.6",
     "expo": "~57.0.26",
     "expo-constants": "~57.0.20",

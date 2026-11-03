@@ -1,0 +1,6 @@
+# Run with `npm run e2e` (iOS) or `npm run e2e:android`; see README.
+# Flows need APP_ID and EXPO_URL (passed with -e, which the npm scripts do).
+# Expo Go's id is case-sensitive: iOS host.exp.Exponent, Android host.exp.exponent.
+# Top-level flows only; subflows/ holds shared steps.
+flows:
+  - "*"

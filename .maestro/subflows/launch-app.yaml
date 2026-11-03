@@ -1,0 +1,22 @@
+# Opens the project in Expo Go on the landing page.
+appId: ${APP_ID}
+---
+- retry:
+    maxRetries: 2
+    commands:
+      # Restart Expo Go and wait until it's in front before opening the
+      # project. Opening a link right after a force-stop can be swallowed by
+      # Android's closing transition, leaving the home screen up.
+      - launchApp:
+          appId: ${APP_ID}
+          stopApp: true
+      - openLink: ${EXPO_URL}
+      # First launch of a project in Expo Go shows a developer-menu introduction.
+      - runFlow:
+          when:
+            visible: "Continue"
+          commands:
+            - tapOn: "Continue"
+      - extendedWaitUntil:
+          visible: "Get Started"
+          timeout: 30000

@@ -1,0 +1,12 @@
+appId: ${APP_ID}
+name: A booking link for a slot that no longer exists
+---
+- runFlow: subflows/launch-app.yaml
+- openLink: ${EXPO_URL}/--/book/does-not-exist?serviceId=1
+- extendedWaitUntil:
+    visible: "This appointment is no longer available."
+    timeout: 20000
+- tapOn: "Choose another time"
+- extendedWaitUntil:
+    visible: "Select a Service"
+    timeout: 20000

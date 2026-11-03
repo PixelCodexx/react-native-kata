@@ -1,0 +1,39 @@
+appId: ${APP_ID}
+name: Invalid bookings never confirm
+---
+- runFlow: subflows/launch-app.yaml
+- runFlow: subflows/open-services.yaml
+- runFlow: subflows/open-booking-form.yaml
+
+# Empty submit: every field explains itself, nothing is sent.
+- scrollUntilVisible:
+    element: "Book Appointment"
+- tapOn: "Book Appointment"
+# Tap outside the fields to close the keyboard (iOS's number pad has no
+# dismiss key, so hideKeyboard can't be used).
+- tapOn: "Your Details"
+- scrollUntilVisible:
+    element: "Enter your name."
+    direction: UP
+- assertVisible: "Enter your name."
+- assertVisible: "Enter your email address."
+
+# Bad email and year.
+- tapOn:
+    id: "booking-email"
+- inputText: "not-an-email"
+# Next key, as a user would (tapping another field races the typing on iOS).
+- pressKey: Enter
+- inputText: "1850"
+# Tap outside the fields to close the keyboard (iOS's number pad has no
+# dismiss key, so hideKeyboard can't be used).
+- tapOn: "Your Details"
+- scrollUntilVisible:
+    element: "Book Appointment"
+- tapOn: "Book Appointment"
+# Tap outside the fields to close the keyboard (iOS's number pad has no
+# dismiss key, so hideKeyboard can't be used).
+- tapOn: "Your Details"
+- assertVisible: "Enter a valid email address, like name@example.com."
+- assertVisible: "Enter a year between 1900 and .*"
+- assertNotVisible: "You're booked!"
