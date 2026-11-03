@@ -13,6 +13,7 @@ The starter is deliberately incomplete. It displays a welcome heading and suppli
 - [API reference](#api-reference)
 - [Troubleshooting](#troubleshooting)
 - [Submission and interview](#submission-and-interview)
+- [Solution overview](#solution-overview)
 
 ## Quick start
 
@@ -282,3 +283,107 @@ Use trusted network/certificate configuration if your machine needs it; do not d
 Work in your personal fork and push your code **at least 24 hours before the interview** so it can be reviewed.
 
 Be prepared to discuss your implementation, testing, priorities, and trade-offs. The interview includes a live-coding enhancement to your solution.
+
+## Solution overview
+
+The booking journey is implemented end to end and runs in Expo Go on iOS and Android.
+
+### What's built
+
+| Route | Screen | What it does |
+| --- | --- | --- |
+| `/` | `LandingPage` | Logo, intro copy, **Get Started**, and tappable support email (`mailto:`) and phone (`tel:`). |
+| `/services` | `ServicesPage` | Services with bookable slots in the next 14 days, as expandable cards (per the wireframe). Each card lists its slots, sorted, as radio options with **Book Now**. Pull to refresh. |
+| `/book/[appointmentId]?serviceId=` | `BookingPage` | Re-checks the slot is still offered, shows it, and collects name, email and vehicle year/make/model. |
+| `/confirmation/[appointmentId]` | `ConfirmationPage` | Shows exactly what the booking API returned, then **Book another service**. |
+
+Route files in `src/app/` only read params and wire navigation. Screens live in `src/global-components/`, reusable pieces in `src/core-components/`, and data and logic in `src/utils/`.
+
+### Key decisions
+
+**Privacy: the app never calls `GET /appointments`.** That endpoint returns booked slots, including other customers' names and emails. Availability comes only from `GET /appointments/:serviceId`, which returns unbooked slots with no customer data. A test fails if any journey requests `/appointments`.
+
+**Availability and the intentional 500s**
+- Every service's slots are fetched in parallel. A service is shown only if it has an unbooked slot starting after now and within 14 days. Slots are sorted in the client.
+- Failed reads retry twice with backoff (500 ms, then 1 s), which absorbs most of the random 500s without the user noticing. 4xx responses are not retried, because the request itself was rejected.
+- If a service still fails, it stays in the list as a card with its own **Try again**, which re-requests only that service. The other services stay usable. A full-screen error appears only when nothing could load.
+- If a refresh fails, the last good list stays on screen with an inline notice.
+
+**Booking safety**
+- **No accidental resubmits.** Bookings are never retried automatically, and the button and fields lock while a request is in flight.
+- **The slot is re-checked first.** The booking screen looks the slot up through its service before showing the form. A booked, past or unknown slot (for example from a stale link) offers **Choose another time** instead.
+- **No false confirmations.** Navigation to the confirmation happens only on success, and the server's error appears beside the submit button with the form values kept. `This appointment is already booked.` refreshes availability and offers another time.
+- **No back-navigation into a used form.** The confirmation replaces the form in history.
+- **No personal data in the URL.** The confirmation is held in the in-memory query cache, never in route params.
+
+**Networking** (`src/utils/http.ts`)
+- Checks the status before decoding, because errors are plain text.
+- Turns network failures, a 15 s timeout and malformed JSON into readable messages. The timeout matters because a wrong LAN IP on a phone can otherwise hang for about a minute.
+
+**Validation**
+- Every field is required and trimmed. Email uses a simple pattern.
+- The year must be 4 digits, from 1900 to next year, and is sent as a number.
+- Errors appear when a field loses focus or on submit, then update live as the user types. A failed submit focuses the first invalid field.
+
+**Phone usability**
+- Safe areas throughout, scrolling on every screen, and touch targets of 44 pt or more.
+- The keyboard's next key moves through the fields, with the right keyboard type and autofill hint for each.
+- Screen readers get roles and states for every control: headers, buttons with their expanded state, radio options with their checked state, alerts and links. Each field has a label, and its error is read out with it.
+- On Android, `KeyboardAvoidingView` measures itself from below the navigation header and under-counts the keyboard by that height. The booking screen passes the header height as `keyboardVerticalOffset` so the focused field stays visible. This was verified on device.
+
+**Motion:** small animations built with the starter's Reanimated: list items fade in, the caret rotates, notices fade in, and the confirmation tick springs in. All follow the OS "Reduce Motion" setting.
+
+**Libraries:** only `@tanstack/react-query` (pure JS, Expo Go compatible) was added, for caching, retries, refetching and cache invalidation after a booking. The form is small enough that a form library would be overbuilding.
+
+**Starter fixes**
+- `getApiBaseUrl` read the environment variable once at import time, so 3 of its own tests failed. It now reads the variable on each call.
+- In `jest.config.js`, the `@assets/*` alias matched before the SVG mock, so aliased SVG imports rendered as objects in tests. The SVG mapper now comes first.
+
+### Tests
+
+`npm test` runs **214 Jest tests** (React Native Testing Library) without a running API. Test helpers are in `test/`. Each test has a fixed clock and time zone, and `fetch` is mocked per route.
+- **Logic:** availability filtering and its boundaries, date and duration formatting, validation, the retry policy, and the HTTP client (plain-text errors, timeout, malformed JSON, missing configuration).
+- **Components and screens:** loading, empty, partial-failure and error states with recovery; slot selection; field order for the keyboard's next key; inline errors; locked fields while sending; every booking error the server can return; and never confirming a failed booking.
+- **Full journeys** with `expo-router/testing-library`, running through the real routes against a stateful fake API:
+  - the happy path, plus history after booking
+  - one service failing until retried
+  - a slot taken by someone else mid-booking, then booking another
+  - opening stale links directly
+  - each journey also asserts that `/appointments` was never called
+
+GitHub Actions (`.github/workflows/ci.yml`) runs lint, both typechecks and the Jest suite on every push and pull request.
+
+### End-to-end tests (Maestro)
+
+The flows in `.maestro/` drive the real app in Expo Go against the mock API:
+
+| Flow | Covers |
+| --- | --- |
+| `landing.yaml` | Heading, logo, copy and support contacts. |
+| `book-appointment.yaml` | Services (tapping **Try again** if an intentional 500 survives the retries), then slot, form, the API's confirmation, and back to services. |
+| `booking-validation.yaml` | Empty and invalid submissions show errors and never confirm. |
+| `stale-link.yaml` | Opening a booking link for a slot that doesn't exist. |
+
+To run them:
+1. Install the [Maestro CLI](https://docs.maestro.dev/getting-started/installing-maestro).
+2. Keep `npm run server` and `npm run ios` (or `npm run android`) running.
+3. Run:
+
+```sh
+npm run e2e          # iOS Simulator (exp://127.0.0.1:8081)
+npm run e2e:android  # Android Emulator (exp://10.0.2.2:8081)
+```
+
+The scripts pass `APP_ID` and `EXPO_URL` to the flows. Expo Go's ID is case-sensitive: `host.exp.Exponent` on iOS and `host.exp.exponent` on Android. If a simulator and an emulator are both running, add `-- --device <id>`.
+
+The flows fill the form using the keyboard's next key, as a user would, so they also cover the field order. Both platforms pass all 4 flows against the real mock API, intentional 500s included.
+
+Each booking run uses up a real slot, and the mock API only creates 2–5 per service when it starts. If the services screen says nothing is available, restart `npm run server` to reset the slots.
+
+### Trade-offs and next steps
+
+- **Request count.** Loading the services screen makes one request per service (4 here). That's fine at this size. With many services, I'd ask for a server endpoint that returns availability for all services without customer data.
+- **Display formats.** Dates and times use the device's time zone in an English format matching the wireframe. Localisation would replace the hand-written formatter with `Intl`.
+- **Possible slight staleness.** The slots in an open card may be up to 30 seconds old. The booking screen re-checks before the form is shown, and the server has the final say when the booking is sent.
+- **Brake Inspection has no supplied icon,** so it shows a neutral initial.
+- **Dependency versions.** `npx expo install --check` suggests patch updates to the starter's Expo packages. I kept the starter's versions.
