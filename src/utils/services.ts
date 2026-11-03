@@ -1,4 +1,4 @@
-export const getServices = async () => {
-  // TODO: Return list of services from the "/services" endpoint.
-};
+import { request } from "./http";
+import type { Service } from "./types";
 
+export const getServices = () => request<Service[]>("/services");
